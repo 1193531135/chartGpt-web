@@ -1,0 +1,679 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Chart Gpt Web</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+    }
+
+    #app {
+      background-color: rgba(0, 0, 0, 0.0);
+      display: flex;
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      right: 0;
+      left: 0;
+      padding: 5vh 5vw;
+      font-size: 14px;
+      font-family: "ColfaxAI", helvetica, sans-serif
+    }
+
+    .container {
+      display: flex;
+      flex: 1;
+    }
+
+    .container>div {
+      border-radius: 10px;
+    }
+
+    /*!!!!!!!!! textarea !!!!!!!!!!!*/
+    .textarea-con {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+      padding: 0 3vw 14px 20px;
+      background-color: white;
+      border: 1px solid #c5c5d2
+    }
+
+    .textarea-con>.el-textarea-title {
+      display: flex;
+      align-items: center;
+      height: 50px;
+      font-weight: 700;
+    }
+
+    .textarea-con textarea {
+      resize: none;
+      border: none !important;
+      outline: none;
+      box-shadow: none;
+      flex: 1;
+      font-size: 16px;
+      font-family: "ColfaxAI", helvetica, sans-serif;
+    }
+
+    .textarea-con textarea:hover {
+      box-shadow: none;
+    }
+
+    /*!!!!!!!!! content !!!!!!!!!!!*/
+    .content-con {
+      flex: 3;
+      /* background-color: white; */
+      margin: 0 20px;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .content-content {
+      flex: 1;
+      overflow: auto;
+    }
+
+    .conversation-item {
+      display: flex;
+      align-items: center;
+      background-color: white;
+      /* margin: 10px 0; */
+      padding: 10px;
+      border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+    }
+
+    .conversation-item:hover .operation-user {
+      background-color: #d9d9e3;
+      cursor: pointer;
+    }
+
+    .conversation-item .el-select {
+      width: 130px;
+    }
+
+    .operation-user {
+      text-transform: uppercase;
+      padding: 12px;
+      font-weight: 700;
+    }
+
+    .conversation-textarea-con {
+      flex: 1;
+      display: flex;
+      position: relative
+    }
+
+    .conversation-item textarea,
+    .hidden-textarea {
+      font-size: 16px;
+      resize: none;
+      padding: 12px;
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      word-break: break-all;
+      line-height: 18px;
+      border: 1px solid rgba(0, 0, 0, 0.1);
+      overflow: hidden;
+      min-height: 18px;
+      font-family: "ColfaxAI", helvetica, sans-serif;
+      outline: none;
+    }
+
+    .conversation-item textarea:focus {
+      border: 1px solid #67C23A;
+      box-shadow: 0 0 5px 1px #67C23A;
+    }
+
+    .hidden-textarea {
+      visibility: hidden;
+      position: relative;
+      white-space: pre-wrap;
+      flex: 1;
+    }
+
+    .conversation-item .el-icon {
+      width: 50px;
+      color: rgba(0, 0, 0, 0.2);
+    }
+
+    .conversation-item .el-icon:hover {
+      color: #F56C6C;
+      cursor: pointer;
+    }
+
+    .conversation-add:hover .el-icon {
+      color: black;
+      cursor: pointer;
+    }
+
+    .conversation-add:hover {
+      background-color: rgba(0, 0, 0, 0.3);
+      cursor: pointer;
+    }
+
+    .conversation-add {
+      font-size: 14px;
+      padding: 16px;
+      padding-left: 0px;
+      justify-content: left;
+    }
+
+    .control-btn {
+      align-items: end;
+    }
+
+    .control-btn .el-icon {
+      width: auto;
+    }
+
+    .dashboard {
+      width: 192px;
+      background-color: white;
+      padding: 24px;
+    }
+
+    .dashContent-item {
+      margin-bottom: 20px;
+    }
+
+    .dashContent-item-title {
+      display: flex;
+    }
+
+    .dashContent-item-title .el-input {
+      width: 44px;
+      text-align: center;
+    }
+
+    .dashContent-item-title>div:nth-child(1) {
+      flex: 1;
+    }
+
+    .el-select {
+      margin-top: 10px;
+    }
+  </style>
+  <!-- 对element ui的组件大改 -->
+  <style>
+    /* element ui 滑块大改 */
+    .el-slider__runway {
+      --el-slider-height: 4px;
+      --el-slider-button-size: 14px;
+      --el-slider-button-wrapper-size: 16px;
+      --el-slider-button-wrapper-offset: -7px
+    }
+  </style>
+</head>
+
+<body>
+  <div id="loading">Loading...</div>
+  <div id="app">
+    <div class="container">
+      <div class="textarea-con">
+        <div class="el-textarea-title">SYSTEM</div>
+        <textarea v-model="systemMessage" placeholder="You are a helpful assistant."></textarea>
+      </div>
+      <div class="content-con">
+        <div class="content-content" ref="content">
+          <div class="conversation-con">
+            <div class="conversation-item" v-for="(conversation,index) in messages.filter(i => i.role != 'system')">
+              <div class="el-select">
+                <span class="operation-user" @click="changeUser(index)">{{ conversation.role }}</span>
+              </div>
+              <div class="conversation-textarea-con">
+                <textarea v-model="conversation.content" rows="1" placeholder="input"></textarea>
+                <div class="hidden-textarea">{{ conversation.content }}</div>
+              </div>
+              <el-icon size="20" @click="removeConversation(index)">
+                <Remove />
+              </el-icon>
+            </div>
+          </div>
+          <div class="conversation-item conversation-add" @click="addConversation">
+            <el-icon style="margin-right:10px"><circle-plus /></el-icon>
+            Add message
+          </div>
+        </div>
+        <div class="conversation-item control-btn">
+          <el-button type="success" @click="submit" :disabled="load">Submit</el-button>
+          <el-button @click="continueAnser" :disabled="load" type="primary" plain>
+            Continue
+            <el-icon style="margin-left: 5px;" title="当回答不完全时，可以输入continue或者继续或者点击此按钮"><question-filled /></el-icon>
+          </el-button>
+          <el-button @click="saveConversation" :disabled="load" type="info" plain>
+            Save Conversation
+            <el-icon style="margin-left: 5px;" title="保存记录当前的对话(会覆盖原有记录)"><question-filled /></el-icon>
+          </el-button>
+        </div>
+      </div>
+      <div class="dashboard">
+        <div class="dashContent-item">
+          <div class="dashContent-item-title">API Key:</div>
+          <div>
+            <el-input v-model="apiKey" style="margin-top: 10px;"></el-input>
+            <p style="height: 5px;"></p>
+            <el-button size="small" type="primary" @click="SaveKey">Save Key</el-button>
+          </div>
+        </div>
+        <div class="dashContent-item">
+          <div class="dashContent-item-title">Model Type</div>
+          <el-select v-model="model">
+            <el-option v-for="item in models" :value="item" :lable="item"></el-option>
+          </el-select>
+        </div>
+        <div class="dashContent-item">
+          <div class="dashContent-item-title">Stream</div>
+          <el-switch v-model="stream" />
+        </div>
+        <div class="dashContent-item">
+          <div class="dashContent-item-title">
+            <div>Temperature</div>
+            <el-input v-model="dashContent.temperature" size="small" @change="checkData('temperature')" />
+          </div>
+          <el-slider v-model="sliderData.temperature" :show-tooltip="false" />
+        </div>
+        <div class="dashContent-item">
+          <div class="dashContent-item-title">
+            <div>Maximum length</div>
+            <el-input v-model="dashContent.max_tokens" size="small" @change="checkData('max_tokens')" />
+          </div>
+          <el-slider v-model="sliderData.max_tokens" :show-tooltip="false" />
+        </div>
+        <div class="dashContent-item">
+          <div class="dashContent-item-title">
+            <div>Presence penalty</div>
+            <el-input v-model="dashContent.presence_penalty" size="small" @change="checkData('presence_penalty')" />
+          </div>
+          <el-slider v-model="sliderData.presence_penalty" :show-tooltip="false" />
+        </div>
+        <div class="dashContent-item">
+          <div class="dashContent-item-title">
+            <div>Frequency penalty</div>
+            <el-input v-model="dashContent.frequency_penalty" size="small" @change="checkData('frequency_penalty')" />
+          </div>
+          <el-slider v-model="sliderData.frequency_penalty" :show-tooltip="false" />
+        </div>
+      </div>
+    </div>
+  </div>
+  <script>
+    (async function init() {
+      // 全局tool方法
+      let $ = (name) => document.querySelector(name)
+      console.success = (val) => {
+        console.log('%c' + val, 'color:#67C23A')
+      }
+      console.msg = (val) => {
+        console.log('%c' + val, 'color:#409EFF')
+      }
+      console.fail = (val) => {
+        console.log('%c' + val, 'color:#F56C6C')
+      }
+      // 动态加载资源
+      {
+        // before load hidden app
+        $('#app').style.display = 'none'
+        const resourceJS = [
+          {
+            moduleName: 'vue',
+            localUrl: './assets/vue.js',
+            networkUrl: ['https://unpkg.com/vue@3/dist/vue.global.js']
+          },
+          {
+            moduleName: 'element-plus-js',
+            localUrl: './assets/element-plus.js',
+            networkUrl: ['https://unpkg.com/element-plus']
+          },
+          {
+            moduleName: 'element-plus-icon-js',
+            localUrl: './assets/element-plus-icon.js',
+            networkUrl: ['https://unpkg.com/@element-plus/icons-vue']
+          },
+          {
+            moduleName: 'element-plus-css',
+            localUrl: './assets/element-plus.css',
+            networkUrl: ['https://unpkg.com/element-plus/dist/index.css'],
+            isCss: true
+          },
+        ]
+        function loadResource(src, isCss) {
+          return new Promise(resolve => {
+            const dom = document.createElement(isCss ? 'link' : 'script')
+            dom[isCss ? 'href' : 'src'] = src
+            isCss && (dom.rel = 'stylesheet')
+            document.head.append(dom)
+            dom.onload = () => { resolve(true) }
+            dom.onerror = () => { resolve(false) }
+          })
+        }
+        // 统计都加载完成
+        let count = 0
+        for (let item of resourceJS) {
+          console.msg(`Starting to load local ${item.moduleName} resources`)
+          let state = await loadResource(item.localUrl, item.isCss)
+          if (!state) {
+            console.info(`%c ${item.moduleName} module loading failed`, 'color:#F56C6C')
+            if (item.networkUrl) {
+              // 开始加载网络资源
+              console.info(`%c Starting to load network ${item.moduleName} resources`, 'color:#409EFF')
+              for (let url of item.networkUrl) {
+                let state2 = await loadResource(url, item.isCss)
+                if (state2) {
+                  count++
+                  console.info(`%c ${item.moduleName} loaded success in ${url}`, 'color:#67C23A')
+                  break;
+                } else {
+                  console.info(`%c ${item.moduleName} loading failed in ${url}`, 'color:#F56C6C')
+                }
+              }
+            }
+          } else {
+            count++
+            console.info(`%c ${item.moduleName} loaded success`, 'color:#67C23A')
+          }
+        }
+        if (count === resourceJS.length) {
+          console.success('resource loaded')
+          $('#app').style.display = 'flex'
+          $('#loading').style.display = 'none'
+        }
+      }
+      let data = {
+        temperature: 0.7,
+        max_tokens: 256,
+        presence_penalty: 0,
+        frequency_penalty: 0,
+      }
+      let bucketData = { ...data }
+      function deepCopy(data) {
+        if (!data && (data != false) && (data != 0)) { throw `数据为空 => ${data}` }
+        let container = null;
+        if (data.constructor === Array) {
+          container = []
+          data.some((item, index) => {
+            if (typeof item === 'object') {
+              container[index] = $deepCopy(item)
+            } else {
+              container[index] = item
+            }
+          })
+        }
+        if (data.constructor === Object) {
+          container = {}
+          Object.keys(data).some((item) => {
+            if (typeof data[item] === 'object' && data[item] != null) {
+              container[item] = $deepCopy(data[item])
+            } else {
+              container[item] = data[item]
+            }
+          })
+        }
+        if (data.constructor != Object && data.constructor != Array) {
+          container = data
+        }
+        return container
+      }
+      const { reactive, ref } = Vue
+      const App = {
+        setup() {
+          const formatMax = {
+            temperature: {
+              max: 1,
+              digit: 100
+            },
+            max_tokens: {
+              max: 2048,
+              digit: 1
+            },
+            presence_penalty: {
+              max: 2,
+              digit: 100
+            },
+            frequency_penalty: {
+              max: 2,
+              digit: 100
+            }
+          }
+          let messages = reactive([
+            { role: 'user', content: '' }
+          ])
+          // created执行的所有方法
+          let created = {
+            loadMessage() {
+              let obj = JSON.parse(localStorage.getItem('chartGptWeb_conversation'))
+              if (obj) {
+                Object.keys(obj).some(i => {
+                  // 对象数组结构使用 reactive
+                  this[i] = typeof obj[i] === 'object' ? reactive(obj[i]) : ref(obj[i])
+                })
+              }
+            },
+            loadKey() {
+              // 读取是否有缓存的key
+              let key = localStorage.getItem('chartGptWeb_apiKey')
+              if (key) { this.apiKey.value = key }
+            }
+          }
+          let componentData = {
+            formatMax,
+            systemMessage: ref(''),
+            messages,
+            apiKey: ref(''),
+            stream: ref(false),
+            model: ref('gpt-3.5-turbo'),
+            load: ref(false),
+            dashContent: reactive(data),
+            bucketData: reactive({ ...data }),
+            sliderData: reactive({}),
+            models: ['gpt-3.5-turbo', 'gpt-4']
+          }
+          Object.keys(created).some(FuncName => created[FuncName].call(componentData))
+          return componentData
+        },
+        watch: {
+          sliderData: {
+            handler(val) {
+              Object.keys(val).some(key => {
+                this.dashContent[key] = this.formatTooltip(val[key], key)
+                this.bucketData[key] = this.formatTooltip(val[key], key)
+              })
+            },
+            deep: true
+          }
+        },
+        methods: {
+          changeUser(index) {
+            this.messages[index].role = this.messages[index].role === 'user' ? 'assistant' : 'user'
+          },
+          removeConversation(index) {
+            this.messages.splice(index, 1)
+          },
+          addConversation() {
+            this.messages.push({ role: 'user', content: '' })
+            this.$nextTick(() => {
+              let content = this.$refs['content']
+              content.scrollTop = content.scrollHeight
+              let a = [...content.querySelectorAll('textarea')].slice(-1)
+              a[0].focus()
+            })
+          },
+          formatTooltip(val, key, isPercentage = false) {
+            let number = 0
+            if (isPercentage) {
+              number = parseInt(val / this.formatMax[key].max * 100)
+            } else {
+              number = (val / 100) * this.formatMax[key].max
+              // 保留位数
+              number = parseInt(number * this.formatMax[key].digit) / this.formatMax[key].digit
+            }
+            return number
+          },
+          checkData(key) {
+            // 失去焦校验数据是否符合格式
+            let state = false
+            // 1.数值类型校验
+            if (/[^0-9.]/.test(this.dashContent[key].toString())) {
+              state = true
+            } else if (this.dashContent[key] > this.formatMax[key].max) {
+              // 最大值校验
+              state = true
+            }
+            if (state) {
+              // 不符合格式返回原数据
+              this.dashContent[key] = this.bucketData[key]
+            } else {
+              // 符合格式change sliderData
+              this.sliderData[key] = this.formatTooltip(this.dashContent[key], key, true)
+              this.bucketData[key] = this.dashContent[key]
+            }
+          },
+          continueAnser() {
+            this.messages.push({ role: 'user', content: 'continue' })
+            this.submit()
+          },
+          saveConversation() {
+            localStorage.setItem('chartGptWeb_conversation', JSON.stringify(
+              {
+                messages: this.messages,
+                systemMessage: this.systemMessage,
+                dashContent: this.dashContent,
+                stream: this.stream,
+                model: this.model
+              }
+            ))
+            Area.$message({ message: 'Save Success', type: 'success' })
+          },
+          submit() {
+            let data = {
+              "model": this.model,
+              stream: this.stream,
+              messages: [...this.messages],
+              ...this.dashContent,
+            }
+            // 有system加上到最前面
+            if (this.systemMessage) {
+              data.messages.unshift({ role: 'system', content: this.systemMessage })
+            }
+            // 校验是否有api key
+            if(!this.apiKey){
+              return Area.$message({ message: 'You must be have API Key', type: 'warning' })
+            }
+            // 校验user是否为空
+            // let state = false
+            // data.messages.filter(i => i.role === 'user').some(item => {
+            //   if (item.content) { state = true }
+            // })
+            // if (!state) {
+            //   return Area.$message({ message: 'user必须得有个值', type: 'warning' })
+            // }
+            // start read
+            this.load = true
+            // 读取流数据
+            const logProgress = (reader) => {
+              let text = ''
+              let decoder = new TextDecoder('utf-8')
+              let contentCon = false
+              let decode = ({ value, done }) => {
+                let chunck = decoder.decode(value, { stream: true })
+                if (done) {
+                  // 因为这个流只有一个切片。直接在done里面读
+                  console.log('Download completed');
+                  if (!this.stream) {
+                    let obj = JSON.parse(text)
+                    this.messages.push(obj.choices[0].message)
+                  }
+                  this.load = false
+                  return;
+                }
+                if (this.stream) {
+                  // 数据提出来
+                  let chunckArr = chunck.split('data: ').filter(i => i && i.indexOf('[DONE]') === -1)
+                  chunckArr.some(item => {
+                    let messageChildren = JSON.parse(item).choices[0].delta
+                    // 有role存在创建容器
+                    if( messageChildren.role){
+                      contentCon = true
+                      messageChildren.content = ''
+                      this.messages.push(messageChildren)
+                    }
+                    if(messageChildren.content){
+                      this.messages[this.messages.length -1].content += messageChildren.content
+                    }
+                  })
+                  // 加上{}模拟一个完整的字典
+                  // console.log('chunck =>>> ',chunck)
+                  // chunck = '{' + chunck + '}'
+                  // let val = eval(`(${chunck})`)
+                  // console.log(val)
+                  // debugger
+                } else {
+                  text += chunck;
+                }
+                reader.read().then(decode);
+              }
+              reader.read().then(decode)
+            };
+            fetch('https://api.openai.com/v1/chat/completions ', {
+              method: "POST",
+              headers: {
+                Authorization: `Bearer ${this.apiKey}`,
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify(data)
+            })
+              .then(res => {
+                if (res.status != 200) {
+                  throw 'error'
+                  return 'error'
+                } else {
+                  return res
+                }
+              })
+              .then(res => res.body.getReader())
+              .then(logProgress)
+              .catch((error) => {
+                console.log(error)
+                this.load = false
+                Area.$message({ message: 'error', type: 'error' })
+              })
+          },
+          SaveKey() {
+            localStorage.setItem('chartGptWeb_apiKey', this.apiKey)
+            Area.$message({ message: 'success', type: 'success' })
+          },
+          changeSliderData() {
+            Object.keys(this.dashContent).some(key => {
+              let data = this.formatTooltip(this.dashContent[key], key, true)
+              this.sliderData[key] = data
+            })
+          }
+        },
+        created() {
+          // 初始化 sliderData
+          this.changeSliderData()
+        }
+      }
+      const app = Vue.createApp(App)
+      for (const [key, component] of Object.entries(ElementPlusIconsVue)) {
+        app.component(key, component)
+      }
+      window.Area = {}
+      window.Area.$message = ElementPlus.ElMessage
+      window.Area.$messageBox = ElementPlus.ElMessageBox
+      app.use(ElementPlus)
+      app.mount('#app')
+    })()
+  </script>
+</body>
+
+</html>
